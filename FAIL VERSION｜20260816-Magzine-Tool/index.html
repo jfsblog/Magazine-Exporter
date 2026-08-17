@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專業雜誌排版工具 (純PX精準穩定版)</title>
+    
+    <!-- 引入外部函式庫 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        @font-face {
+            font-family: 'aAccountantSignature';
+            src: url('aAccountantSignature.otf') format('opentype');
+        }
+        @font-face {
+            font-family: 'GlowSansTC';
+            src: url('GlowSansTC-Compressed-Light.otf') format('opentype');
+        }
+        @font-face {
+            font-family: 'NotoSerifTC';
+            src: url('NotoSerifTC-Black.ttf') format('truetype');
+            font-weight: 900;
+        }
+        @font-face {
+            font-family: 'Cinzel';
+            src: url('Cinzel.ttf') format('truetype');
+        }
+
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+
+        /* 滾動條美化 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #2d2d2d; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #777; }
+
+        /* === 核心排版容器 (固定寬度 1024px) === */
+        .magazine-container {
+            width: 1024px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            padding: 30px 0 60px 0;
+        }
+
+        /* 單一直頁 (固定 600x800) */
+        .page {
+            width: 600px;
+            height: 800px;
+            background-color: #D3C3A3;
+            position: relative;
+            overflow: hidden;
+            flex: none;
+            box-sizing: border-box;
+        }
+        .page-left {
+            box-shadow: inset -10px 0 20px rgba(0,0,0,0.1);
+            border-right: 2px solid #ffffff;
+        }
+        .page-right {
+            box-shadow: inset 10px 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* 橫向封面 (固定 1200x800) */
+        .page.horizontal-cover {
+            width: 1200px;
+            height: 800px;
+            box-shadow: none;
+            border: none;
+        }
+        
+        /* 直向封面 */
+        .page.vertical-cover {
+            width: 600px;
+            height: 800px;
+            box-shadow: none;
+            border: none;
+        }
+
+        /* 跨頁容器 */
+        .spread {
+            display: flex;
+            width: 1200px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        /* 內部網格系統 */
+        .layout-grid {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            position: absolute;
+            top: 0; left: 0;
+            padding: 0;
+            gap: 0;
+            transition: all 0.3s;
+        }
+        .page.with-borders .layout-grid {
+            padding: 40px;
+            gap: 40px;
+        }
+
+        /* 圖片容器 */
+        .img-container {
+            background-color: #e5e7eb;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+        .img-container::after {
+            content: "+ 點擊加入圖片";
+            color: #9ca3af;
+            font-size: 14px;
+            position: absolute;
+            pointer-events: none;
+        }
+        .img-container:has(img)::after { display: none; }
+        
+        .placed-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            max-width: none !important;
+            max-height: none !important;
+            transform-origin: 0 0;
+            cursor: grab;
+        }
+        .placed-img:active { cursor: grabbing; }
+
+        /* === 頁面裝飾 === */
+        .center-decorator {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+        }
+        .decorator-logo {
+            left: 0;
+            padding-left: 50px;
+            gap: 15px;
+            color: white;
+            font-family: 'NotoSerifTC', serif;
+            font-size: 44px;
+            flex-direction: row;
+        }
+        .decorator-logo img { width: 70px; height: auto; }
+        
+        .decorator-sub {
+            right: 0;
+            padding-right: 50px;
+            font-family: 'Cinzel', serif;
+            color: white;
+            font-size: 22px;
+            line-height: 1.6;
+            text-align: right;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        /* === 藝術文字區塊 (純 PX 傳統 block 佈局) === */
+        .art-text-block {
+            position: absolute;
+            z-index: 30;
+            display: block;
+            white-space: nowrap;
+        }
+        .art-text-block.align-left { text-align: left; }
+        .art-text-block.align-center { text-align: center; }
+        .art-text-block.align-right { text-align: right; }
+
+        .text-signature {
+            font-family: 'aAccountantSignature', cursive;
+            font-size: 18px;
+            line-height: 1.1;
+            margin-bottom: 4px;
+            outline: none;
+            cursor: text;
+            display: block;
+        }
+        .text-title {
+            font-family: 'NotoSerifTC', serif;
+            font-weight: 900;
+            font-size: 34px;
+            line-height: 1.0;
+            margin-bottom: 8px;
+            outline: none;
+            cursor: text;
+            display: block;
+        }
+        .text-sub1 {
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            letter-spacing: 0.2em;
+            line-height: 1.2;
+            margin-bottom: 4px;
+            outline: none;
+            cursor: text;
+            display: block;
+        }
+        .text-sub2 {
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            letter-spacing: 0.2em;
+            line-height: 1.2;
+            outline: none;
+            cursor: text;
+            display: block;
+        }
+        
+        .theme-white { color: white; }
+        .theme-black { color: black; }
+
+        /* === 橫向封面專用文字 (純 PX 設計) === */
+        .h-cover-custom-text {
+            position: absolute;
+            inset: 0;
+            z-index: 30;
+            pointer-events: none; 
+        }
+        .h-cover-top-banner {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+        .h-cover-side-bar {
+            flex-grow: 1;
+            height: 68px; 
+            background-color: rgba(255, 255, 255, 0.4); 
+            transform: translateY(-2px); 
+        }
+        .h-cover-main-text {
+            font-family: 'Cinzel', serif;
+            font-size: 94px; 
+            font-weight: bold;
+            color: white;
+            padding: 0 20px;
+            line-height: 1;
+        }
+        .h-cover-bottom-text {
+            position: absolute;
+            bottom: 40px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            display: block;
+        }
+        .hc-title {
+            font-family: 'GlowSansTC', sans-serif;
+            font-size: 15px; 
+            color: white;
+            margin-bottom: 6px; 
+            line-height: 1.2;
+        }
+        .hc-sub1 {
+            font-family: 'Cinzel', serif;
+            font-size: 11px; 
+            color: white;
+            letter-spacing: 0.2em;
+            margin-bottom: 4px;
+            line-height: 1.2;
+        }
+        .hc-sub2 {
+            font-family: 'Cinzel', serif;
+            font-size: 10px; 
+            color: white;
+            letter-spacing: 0.2em;
+            line-height: 1.2;
+        }
+
+        /* 圖片編輯覆蓋層 */
+        .img-edit-overlay {
+            position: absolute; inset: 0;
+            border: 2px solid #3b82f6;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 12px; height: 12px;
+            background-color: white;
+            border: 2px solid #3b82f6;
+            border-radius: 50%;
+            pointer-events: auto;
+        }
+        .handle-tl { top: -6px; left: -6px; cursor: nwse-resize; }
+        .handle-tr { top: -6px; right: -6px; cursor: nesw-resize; }
+        .handle-bl { bottom: -6px; left: -6px; cursor: nesw-resize; }
+        .handle-br { bottom: -6px; right: -6px; cursor: nwse-resize; }
+        .btn-replace-img {
+            position: absolute;
+            top: 10px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white; padding: 4px 12px;
+            border-radius: 12px; font-size: 12px;
+            pointer-events: auto; cursor: pointer;
+        }
+
+        /* 文字工具列 */
+        .text-toolbar {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30,30,30,0.9);
+            border-radius: 8px;
+            padding: 4px;
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+        }
+        .art-text-block:hover .text-toolbar,
+        .text-toolbar:hover {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .art-text-block::before {
+            content: '';
+            position: absolute;
+            top: -40px; left: 0; right: 0; height: 40px;
+            background: transparent;
+        }
+        .tool-btn {
+            width: 24px; height: 24px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 4px; color: #9ca3af; font-size: 12px;
+        }
+        .tool-btn:hover { background: #4b5563; color: white; }
+
+        /* 縮圖 */
+        .thumb-box {
+            width: 120px;
+            border: 2px solid transparent;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .thumb-page { flex: 1; width: 50%; height: 100%; }
+        .thumb-standard { aspect-ratio: 3/2; }
+        .thumb-v-cover { width: 60px; aspect-ratio: 3/4; margin: 0 auto; }
+
+        .spread-wrapper { display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; width: 100%; position: relative; }
+        .v-cover-wrapper { display: flex; flex-direction: column; align-items: center; margin-bottom: 30px; width: 100%; position: relative; }
+    </style>
+</head>
+<body class="flex h-screen">
+
+    <div class="w-48 bg-[#2d2d2d] flex flex-col border-r border-gray-700 z-50 shrink-0 h-full overflow-hidden">
+        <div class="p-4 border-b border-gray-700 bg-[#222]">
+            <h1 class="text-white font-bold text-center tracking-wider text-sm">MAGAZINE<br>LAYOUT</h1>
+        </div>
+        
+        <div class="p-4 border-b border-gray-700">
+            <div class="text-xs text-gray-400 mb-2">全局背景色</div>
+            <input type="color" id="global-bg-color" value="#D3C3A3" class="w-full h-8 rounded cursor-pointer bg-transparent border-0 p-0">
+        </div>
+        
+        <div class="p-4 border-b border-gray-700 flex flex-col gap-2">
+            <button id="btn-export" onclick="exportProject()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm transition-colors"><i class="fas fa-file-export mr-2"></i>匯出專案 (ZIP)</button>
+            <button onclick="document.getElementById('import-file').click()" class="w-full py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors"><i class="fas fa-file-import mr-2"></i>匯入專案 (TXT)</button>
+            <input type="file" id="import-file" class="hidden" accept=".txt" onchange="importProject(event)">
+            <input type="file" id="import-images" class="hidden" webkitdirectory directory multiple onchange="processImportedImages(event)">
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <div class="text-xs text-gray-400 mb-3 flex justify-between items-center">
+                <span>頁面大綱</span>
+                <button onclick="addStandardSpread()" class="hover:text-white shrink-0" title="新增空白跨頁"><i class="fas fa-plus"></i></button>
+            </div>
+            
+            <div id="static-thumbs-container" class="flex flex-col gap-4 mb-4 pb-4 border-b border-gray-700 shrink-0"></div>
+            <div id="sortable-thumbs-container" class="flex flex-col gap-4 pb-10"></div>
+        </div>
+    </div>
+
+    <!-- 編輯主區塊 -->
+    <div class="flex-1 flex flex-col h-screen overflow-y-auto custom-scrollbar relative bg-[#1a1a1a]" id="main-scroll-area">
+        <div class="magazine-container" id="workspace"></div>
+    </div>
+    
+    <input type="file" id="image-upload" class="hidden" accept="image/*">
+
+    <!-- 模板定義 -->
+    <template id="tpl-layout-1">
+        <div class="img-container" style="grid-column: 1 / -1; grid-row: 1 / -1;"></div>
+    </template>
+    <template id="tpl-layout-2">
+        <div class="img-container" style="grid-column: 1 / -1; grid-row: 1 / 2;"></div>
+        <div class="img-container" style="grid-column: 1 / -1; grid-row: 2 / 3;"></div>
+    </template>
+    <template id="tpl-layout-3-top">
+        <div class="img-container" style="grid-column: 1 / -1; grid-row: 1 / 2;"></div>
+        <div class="tpl-sub-grid" style="grid-column: 1 / -1; grid-row: 2 / 3; display: grid; grid-template-columns: 1fr 1fr; width: 100%; height: 100%;">
+            <div class="img-container"></div><div class="img-container"></div>
+        </div>
+    </template>
+    <template id="tpl-layout-3-bottom">
+        <div class="tpl-sub-grid" style="grid-column: 1 / -1; grid-row: 1 / 2; display: grid; grid-template-columns: 1fr 1fr; width: 100%; height: 100%;">
+            <div class="img-container"></div><div class="img-container"></div>
+        </div>
+        <div class="img-container" style="grid-column: 1 / -1; grid-row: 2 / 3;"></div>
+    </template>
+    <template id="tpl-layout-4">
+        <div class="img-container"></div><div class="img-container"></div>
+        <div class="img-container"></div><div class="img-container"></div>
+    </template>
+    <template id="tpl-cover-h-2">
+        <div class="img-container" style="grid-column: 1 / 2; grid-row: 1 / -1;"></div>
+        <div class="img-container" style="grid-column: 2 / 3; grid-row: 1 / -1;"></div>
+    </template>
+    <template id="spread-template">
+        <div class="spread-wrapper relative group">
+            <div class="flex justify-between w-full px-4 mb-2 opacity-0 group-hover:opacity-100 transition-opacity z-40 absolute -top-10">
+                <div class="flex items-center gap-1 bg-[#222] p-1 rounded-lg control-left border border-gray-600 shadow-lg"></div>
+                <div class="flex items-center gap-1 bg-[#222] p-1 rounded-lg control-right border border-gray-600 shadow-lg"></div>
+            </div>
+            <div class="spread">
+                <div class="page page-left"><div class="layout-grid"></div></div>
+                <div class="page page-right"><div class="layout-grid"></div></div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        let pagesData = [];
+        let currentGlobalBgColor = '#D3C3A3';
+        let currentUploadTarget = null;
+        let masterText = {
+            signature: 'Shengle Wang',
+            title: '葉綠宿',
+            sub1: 'TAICHUNG / XITUN',
+            sub2: 'STROLLTIMES.COM',
+            timesColor: '#ffffff'
+        };
+
+        const workspace = document.getElementById('workspace');
+        const staticThumbsContainer = document.getElementById('static-thumbs-container');
+        const sortableThumbsContainer = document.getElementById('sortable-thumbs-container');
+
+        function init() {
+            pagesData = [
+                { id: generateId(), type: 'h-cover', layout: '1', images: [], hasText: true, pageType: 'horizontal-cover' },
+                { id: generateId(), type: 'v-cover', layout: '1', images: [], hasText: true, pageType: 'vertical-cover' },
+                { id: generateId(), cssClass: 'page-left', layout: '1', images: [], hasBorders: false, hasText: false, hasLogo: false },
+                { id: generateId(), cssClass: 'page-right', layout: '1', images: [], hasBorders: false, hasText: false, hasSub: false }
+            ];
+
+            document.getElementById('global-bg-color').addEventListener('input', (e) => {
+                currentGlobalBgColor = e.target.value;
+                document.querySelectorAll('.page').forEach(p => p.style.backgroundColor = currentGlobalBgColor);
+                refreshThumbnails();
+            });
+
+            new Sortable(sortableThumbsContainer, {
+                animation: 150,
+                ghostClass: 'bg-purple-900',
+                onEnd: function (evt) { reorderPagesByThumbs(); }
+            });
+
+            workspace.addEventListener('click', (e) => {
+                if (e.target.classList.contains('img-container') || e.target.classList.contains('placed-img')) {
+                    const container = e.target.closest('.img-container');
+                    const pageEl = container.closest('.page');
+                    if (!pageEl) return;
+                    
+                    const pageId = pageEl.dataset.id;
+                    const grid = pageEl.querySelector('.layout-grid');
+                    const containers = Array.from(grid.querySelectorAll('.img-container'));
+                    const idx = containers.indexOf(container);
+                    
+                    if (e.target.classList.contains('placed-img')) {
+                        enterImageEditMode(e.target, pageId, idx);
+                    } else {
+                        currentUploadTarget = { pageId, idx, container };
+                        document.getElementById('image-upload').click();
+                    }
+                }
+            });
+
+            renderWorkspace();
+        }
+
+        function reorderPagesByThumbs() {
+            const newPagesData = [pagesData[0], pagesData[1]]; 
+            const thumbGroups = sortableThumbsContainer.querySelectorAll('.thumb-group');
+            
+            thumbGroups.forEach(group => {
+                const leftId = group.dataset.pageLeftId;
+                const rightId = group.dataset.pageRightId;
+                
+                if (leftId) {
+                    const p1 = pagesData.find(p => p.id === leftId);
+                    if(p1) newPagesData.push(p1);
+                }
+                if (rightId) {
+                    const p2 = pagesData.find(p => p.id === rightId);
+                    if(p2) newPagesData.push(p2);
+                }
+            });
+            
+            pagesData = newPagesData;
+            renderWorkspace();
+        }
+
+        function refreshThumbnails() {
+            staticThumbsContainer.innerHTML = '';
+            sortableThumbsContainer.innerHTML = '';
+
+            const covers = pagesData.slice(0, 2);
+            const standardPages = pagesData.slice(2);
+
+            let hThumb = document.createElement('div');
+            hThumb.className = 'thumb-group shrink-0';
+            const hBox = document.createElement('div');
+            hBox.className = 'thumb-box thumb-standard cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all';
+            hBox.onclick = () => scrollToSpread(covers[0].id);
+            hBox.innerHTML = `<div class="thumb-page" style="background-color: ${currentGlobalBgColor};"></div>`;
+            hThumb.appendChild(hBox);
+            hThumb.insertAdjacentHTML('beforeend', '<div class="text-[10px] text-gray-500 text-center mt-1">橫向封面</div>');
+            staticThumbsContainer.appendChild(hThumb);
+
+            let vThumb = document.createElement('div');
+            vThumb.className = 'thumb-group shrink-0';
+            const vBox = document.createElement('div');
+            vBox.className = 'thumb-box thumb-v-cover cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all';
+            vBox.onclick = () => scrollToSpread(covers[1].id);
+            vBox.innerHTML = `<div class="thumb-page" style="background-color: ${currentGlobalBgColor};"></div>`;
+            vThumb.appendChild(vBox);
+            vThumb.insertAdjacentHTML('beforeend', '<div class="text-[10px] text-gray-500 text-center mt-1">直向封面</div>');
+            staticThumbsContainer.appendChild(vThumb);
+
+            let spreadIndex = 1;
+            for (let i = 0; i < standardPages.length; i += 2) {
+                const p1 = standardPages[i];
+                const p2 = standardPages[i+1];
+                
+                const group = document.createElement('div');
+                group.className = 'thumb-group draggable-thumb shrink-0 relative';
+                group.dataset.pageLeftId = p1 ? p1.id : '';
+                group.dataset.pageRightId = p2 ? p2.id : '';
+                
+                const sBox = document.createElement('div');
+                sBox.className = 'thumb-box thumb-standard cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all';
+                sBox.onclick = () => { if (p1) scrollToSpread(p1.id); };
+                sBox.innerHTML = `
+                    <div class="thumb-page" style="background-color: ${currentGlobalBgColor}; border-right: 1px solid rgba(255,255,255,0.2);"></div>
+                    <div class="thumb-page" style="background-color: ${currentGlobalBgColor};"></div>
+                `;
+                group.appendChild(sBox);
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = 'absolute -top-2 -right-2 w-5 h-5 bg-red-600 text-white rounded-full text-xs hidden group-hover:block z-10 shadow-lg hover:bg-red-500';
+                delBtn.innerHTML = '<i class="fas fa-times"></i>';
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteSpread([p1, p2].filter(p=>p));
+                };
+                group.appendChild(delBtn);
+
+                group.insertAdjacentHTML('beforeend', `<div class="text-[10px] text-gray-500 text-center mt-1">跨頁 ${spreadIndex++}</div>`);
+                sortableThumbsContainer.appendChild(group);
+            }
+        }
+
+        function scrollToSpread(pageId) {
+            const el = document.querySelector(`.page[data-id="${pageId}"]`);
+            if (el) {
+                const wrapper = el.closest('.spread-wrapper') || el;
+                wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function deleteSpread(pagesToDelete) {
+            const idsToDelete = pagesToDelete.map(p => p.id);
+            pagesData = pagesData.filter(p => !idsToDelete.includes(p.id));
+            renderWorkspace();
+        }
+
+        function addStandardSpread() {
+            pagesData.push({ id: generateId(), cssClass: 'page-left', layout: '1', images: [], hasBorders: false, hasText: false, hasLogo: false });
+            pagesData.push({ id: generateId(), cssClass: 'page-right', layout: '1', images: [], hasBorders: false, hasText: false, hasSub: false });
+            renderWorkspace();
+            setTimeout(() => {
+                const mainArea = document.getElementById('main-scroll-area');
+                mainArea.scrollTo({ top: mainArea.scrollHeight, behavior: 'smooth' });
+            }, 100);
+        }
+
+        function renderWorkspace() {
+            workspace.innerHTML = '';
+            
+            const hCoverWrapper = document.createElement('div');
+            hCoverWrapper.className = 'spread-wrapper relative group';
+            const hcControls = document.createElement('div');
+            hcControls.className = 'flex items-center gap-1 bg-[#222] p-1 rounded-lg border border-gray-600 shadow-lg absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity z-40';
+            hcControls.innerHTML = getControlButtonsHTML('h-cover');
+            bindControls(hcControls, pagesData[0]);
+            hCoverWrapper.appendChild(hcControls);
+            hCoverWrapper.appendChild(buildPageElement(pagesData[0]));
+            workspace.appendChild(hCoverWrapper);
+
+            const vCoverWrapper = document.createElement('div');
+            vCoverWrapper.className = 'v-cover-wrapper relative group';
+            const vcControls = document.createElement('div');
+            vcControls.className = 'flex items-center gap-1 bg-[#222] p-1 rounded-lg border border-gray-600 shadow-lg absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity z-40';
+            vcControls.innerHTML = getControlButtonsHTML('v-cover');
+            bindControls(vcControls, pagesData[1]);
+            vCoverWrapper.appendChild(vcControls);
+            vCoverWrapper.appendChild(buildPageElement(pagesData[1]));
+            workspace.appendChild(vCoverWrapper);
+
+            const standardPages = pagesData.slice(2);
+            for (let i = 0; i < standardPages.length; i += 2) {
+                const spreadTpl = document.getElementById('spread-template').content.cloneNode(true);
+                const wrapper = spreadTpl.querySelector('.spread-wrapper');
+                const spread = wrapper.querySelector('.spread');
+                
+                const pLeftData = standardPages[i];
+                const pRightData = standardPages[i+1];
+
+                const cLeft = wrapper.querySelector('.control-left');
+                const cRight = wrapper.querySelector('.control-right');
+                
+                if (pLeftData) {
+                    cLeft.innerHTML = getControlButtonsHTML('standard', 'left');
+                    bindControls(cLeft, pLeftData);
+                    spread.replaceChild(buildPageElement(pLeftData), spread.querySelector('.page-left'));
+                } else {
+                    cLeft.style.display = 'none';
+                    spread.querySelector('.page-left').innerHTML = '';
+                }
+
+                if (pRightData) {
+                    cRight.innerHTML = getControlButtonsHTML('standard', 'right');
+                    bindControls(cRight, pRightData);
+                    spread.replaceChild(buildPageElement(pRightData), spread.querySelector('.page-right'));
+                } else {
+                    cRight.style.display = 'none';
+                    spread.querySelector('.page-right').innerHTML = '';
+                }
+
+                workspace.appendChild(wrapper);
+            }
+
+            document.querySelectorAll('.page').forEach(p => p.style.backgroundColor = currentGlobalBgColor);
+            refreshThumbnails();
+        }
+
+        function buildPageElement(pageData) {
+            const el = document.createElement('div');
+            el.className = `page ${pageData.cssClass || ''}`;
+            if(pageData.pageType) el.classList.add(pageData.pageType);
+            el.dataset.id = pageData.id;
+
+            const grid = document.createElement('div');
+            grid.className = 'layout-grid';
+            
+            let tplId = `tpl-layout-${pageData.layout}`;
+            if (pageData.pageType === 'horizontal-cover' && pageData.layout === 'h2') tplId = 'tpl-cover-h-2';
+            if (pageData.pageType === 'vertical-cover' && pageData.layout === '2') tplId = 'tpl-layout-2'; 
+            
+            grid.style.gridTemplateColumns = '1fr';
+            grid.style.gridTemplateRows = '1fr';
+            
+            if (pageData.layout === 'h2' || pageData.layout === '4') {
+                grid.style.gridTemplateColumns = '1fr 1fr';
+            }
+            if (pageData.layout === '2' || pageData.layout.startsWith('3') || pageData.layout === '4' || pageData.layout === 'h2' || (pageData.pageType==='vertical-cover' && pageData.layout==='2')) {
+                grid.style.gridTemplateRows = '1fr 1fr';
+            }
+
+            const template = document.getElementById(tplId);
+            if (template) grid.innerHTML = template.innerHTML;
+            el.appendChild(grid);
+
+            const containers = grid.querySelectorAll('.img-container');
+            containers.forEach((container, idx) => {
+                const imgInfo = pageData.images[idx];
+                if (imgInfo && imgInfo.dataUrl) {
+                    container.innerHTML = '';
+                    const img = new Image();
+                    img.className = 'placed-img';
+                    img.src = imgInfo.dataUrl;
+                    img.dataset.filename = imgInfo.filename;
+                    img.dataset.scale = imgInfo.scale;
+                    img.dataset.minScale = imgInfo.minScale || imgInfo.scale; 
+                    img.dataset.x = imgInfo.x;
+                    img.dataset.y = imgInfo.y;
+                    
+                    img.onload = () => { applyImgTransform(img); };
+                    container.appendChild(img);
+                }
+            });
+
+            applyPageDecorations(pageData, el);
+            return el;
+        }
+
+        function applyPageDecorations(pageData, pageEl = null) {
+            const el = pageEl || document.querySelector(`.page[data-id="${pageData.id}"]`);
+            if (!el) return;
+
+            const grid = el.querySelector('.layout-grid');
+            if (pageData.hasBorders) {
+                el.classList.add('with-borders');
+                if (grid) grid.querySelectorAll('.tpl-inner-grid, .tpl-sub-grid').forEach(ig => ig.style.gap = '40px');
+            } else {
+                el.classList.remove('with-borders');
+                if (grid) grid.querySelectorAll('.tpl-inner-grid, .tpl-sub-grid').forEach(ig => ig.style.gap = '0px');
+            }
+
+            const existingHCText = el.querySelector('.h-cover-custom-text');
+            const existingArtText = el.querySelector('.art-text-block');
+            
+            if (pageData.hasText) {
+                if (pageData.pageType === 'horizontal-cover') {
+                    if (!existingHCText) el.appendChild(createHCoverText());
+                } else {
+                    if (!existingArtText) el.appendChild(createTextBlock(pageData));
+                }
+            } else {
+                if (existingHCText) existingHCText.remove();
+                if (existingArtText) existingArtText.remove();
+            }
+
+            const existingLogo = el.querySelector('.decorator-logo');
+            if (pageData.cssClass === 'page-left' && pageData.hasLogo) {
+                if (!existingLogo) {
+                    const logo = document.createElement('div');
+                    logo.className = 'center-decorator decorator-logo';
+                    logo.innerHTML = `<img src="logo.png" onerror="this.src='https://placehold.co/100x100/transparent/white?text=LOGO'" alt="Logo"><span>漫步時光</span>`;
+                    el.appendChild(logo);
+                }
+            } else {
+                if (existingLogo) existingLogo.remove();
+            }
+
+            const existingSub = el.querySelector('.decorator-sub');
+            if (pageData.cssClass === 'page-right' && pageData.hasSub) {
+                if (!existingSub) {
+                    const sub = document.createElement('div');
+                    sub.className = 'center-decorator decorator-sub';
+                    sub.innerHTML = `<span>${masterText.sub1}<br>${masterText.sub2}</span>`;
+                    el.appendChild(sub);
+                }
+            } else {
+                if (existingSub) existingSub.remove();
+            }
+        }
+
+        function getControlButtonsHTML(type, side = '') {
+            if (type === 'h-cover') {
+                return `
+                    <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="1" title="滿版"><i class="far fa-square"></i></button>
+                    <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="h2" title="左右併圖"><i class="fas fa-columns"></i></button>
+                    <div class="w-px h-6 bg-gray-700 mx-1 mt-1"></div>
+                    <button class="btn-toggle btn-text w-8 h-8 rounded text-white" title="主視覺文字"><i class="fas fa-font"></i></button>
+                    <input type="color" class="btn-times-color w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0 ml-1" value="${masterText.timesColor}" title="更改 TIMES 文字顏色">
+                `;
+            } else if (type === 'v-cover') {
+                return `
+                    <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="1" title="滿版"><i class="far fa-square"></i></button>
+                    <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="2" title="上下併圖"><i class="fas fa-grip-lines"></i></button>
+                    <div class="w-px h-6 bg-gray-700 mx-1 mt-1"></div>
+                    <button class="btn-toggle btn-text w-8 h-8 rounded text-white" title="主視覺文字"><i class="fas fa-font"></i></button>
+                `;
+            } else {
+                return `
+                    <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="1"><i class="far fa-square"></i></button>
+                    <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="2"><i class="fas fa-grip-lines"></i></button>
+                    <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="3-top"><i class="fas fa-border-none"></i></button>
+                    <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="3-bottom"><i class="fas fa-border-all"></i></button>
+                    <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="4"><i class="fas fa-th-large"></i></button>
+                    <div class="w-px h-6 bg-gray-700 mx-1 mt-1"></div>
+                    <button class="btn-toggle btn-border w-8 h-8 rounded text-gray-400 hover:bg-gray-700" title="邊框"><i class="fas fa-border-style"></i></button>
+                    <button class="btn-toggle btn-text w-8 h-8 rounded text-gray-400 hover:bg-gray-700" title="文字"><i class="fas fa-font"></i></button>
+                    ${side === 'left' ? `<button class="btn-toggle btn-logo w-8 h-8 rounded text-gray-400 hover:bg-gray-700" title="Logo"><i class="fas fa-leaf"></i></button>` : `<button class="btn-toggle btn-sub w-8 h-8 rounded text-gray-400 hover:bg-gray-700" title="飾字"><i class="fas fa-quote-right"></i></button>`}
+                `;
+            }
+        }
+
+        function bindControls(groupEl, pageData) {
+            const layoutBtns = groupEl.querySelectorAll('.btn-layout');
+            layoutBtns.forEach(btn => {
+                if(btn.dataset.layout === pageData.layout) {
+                    btn.classList.add('bg-gray-700', 'text-white');
+                    btn.classList.remove('text-gray-400');
+                }
+                btn.onclick = () => {
+                    pageData.layout = btn.dataset.layout;
+                    renderWorkspace(); 
+                };
+            });
+
+            const toggleBtn = (btnClass, propName, activeColor) => {
+                const btn = groupEl.querySelector(btnClass);
+                if (!btn) return;
+                
+                if(pageData[propName]) {
+                    btn.classList.add(activeColor, 'text-white');
+                    btn.classList.remove('text-gray-400', 'hover:bg-gray-700');
+                }
+                btn.onclick = () => {
+                    pageData[propName] = !pageData[propName];
+                    if (pageData[propName]) {
+                        btn.classList.add(activeColor, 'text-white');
+                        btn.classList.remove('text-gray-400', 'hover:bg-gray-700');
+                    } else {
+                        btn.classList.remove(activeColor, 'text-white');
+                        btn.classList.add('text-gray-400', 'hover:bg-gray-700');
+                    }
+                    applyPageDecorations(pageData);
+                };
+            };
+
+            toggleBtn('.btn-border', 'hasBorders', 'bg-blue-600');
+            toggleBtn('.btn-text', 'hasText', 'bg-purple-600');
+            toggleBtn('.btn-logo', 'hasLogo', 'bg-green-600');
+            toggleBtn('.btn-sub', 'hasSub', 'bg-orange-600');
+
+            const timesPicker = groupEl.querySelector('.btn-times-color');
+            if (timesPicker) {
+                timesPicker.addEventListener('input', (e) => {
+                    masterText.timesColor = e.target.value;
+                    document.querySelectorAll('.hc-times').forEach(el => el.style.color = masterText.timesColor);
+                });
+            }
+        }
+
+        function createHCoverText() {
+            const hcText = document.createElement('div');
+            hcText.className = 'h-cover-custom-text';
+            hcText.innerHTML = `
+                <div class="h-cover-top-banner">
+                    <div class="h-cover-side-bar"></div>
+                    <div class="h-cover-main-text">
+                        <span>STROLL</span><span class="hc-times" style="color: ${masterText.timesColor}; transition: color 0.2s;">TIMES</span>
+                    </div>
+                    <div class="h-cover-side-bar"></div>
+                </div>
+                <div class="h-cover-bottom-text">
+                    <div class="hc-title">${masterText.title}</div>
+                    <div class="hc-sub1">${masterText.sub1}</div>
+                    <div class="hc-sub2">${masterText.sub2}</div>
+                </div>`;
+            return hcText;
+        }
+
+        function createTextBlock(pageData) {
+            if(!pageData.textSettings) {
+                pageData.textSettings = { align: 'center', theme: 'white', top: '400px', left: '300px', transform: 'translate(-50%, -50%)' };
+            }
+            
+            const block = document.createElement('div');
+            block.className = `art-text-block align-${pageData.textSettings.align} theme-${pageData.textSettings.theme}`;
+            block.style.top = pageData.textSettings.top;
+            block.style.left = pageData.textSettings.left;
+            block.style.transform = pageData.textSettings.transform;
+            
+            block.innerHTML = `
+                <div class="text-toolbar" contenteditable="false">
+                    <button class="tool-btn hover:text-white" onclick="alignText(this, 'left')"><i class="fas fa-align-left"></i></button>
+                    <button class="tool-btn hover:text-white" onclick="alignText(this, 'center')"><i class="fas fa-align-center"></i></button>
+                    <button class="tool-btn hover:text-white" onclick="alignText(this, 'right')"><i class="fas fa-align-right"></i></button>
+                    <div class="w-px h-4 bg-gray-600 mx-1"></div>
+                    <div class="grid grid-cols-3 gap-1 px-1">
+                        ${[1,2,3,4,5,6,7,8,9].map(i => `<button class="w-2 h-2 rounded-full bg-gray-500 hover:bg-white" onclick="posText(this, ${i})"></button>`).join('')}
+                    </div>
+                    <div class="w-px h-4 bg-gray-600 mx-1"></div>
+                    <button class="tool-btn hover:text-white" onclick="themeText(this, 'black')"><i class="fas fa-circle text-black border border-white rounded-full text-xs"></i></button>
+                    <button class="tool-btn hover:text-white" onclick="themeText(this, 'white')"><i class="fas fa-circle text-white border border-gray-500 rounded-full text-xs"></i></button>
+                </div>
+                <div class="text-signature" contenteditable="true" spellcheck="false" onblur="updateMasterText('signature', this.innerText)">${masterText.signature}</div>
+                <div class="text-title" contenteditable="true" spellcheck="false" onblur="updateMasterText('title', this.innerText)">${masterText.title}</div>
+                <div class="text-sub1" contenteditable="true" spellcheck="false" onblur="updateMasterText('sub1', this.innerText)">${masterText.sub1}</div>
+                <div class="text-sub2" contenteditable="true" spellcheck="false" onblur="updateMasterText('sub2', this.innerText)">${masterText.sub2}</div>
+            `;
+            
+            bindTextBlockEvents(block, pageData);
+            return block;
+        }
+
+        let isDraggingText = false;
+        let currentDragBlock = null;
+        let currentDragPage = null;
+        let textDragOffset = { x: 0, y: 0 };
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDraggingText || !currentDragBlock) return;
+            const rect = currentDragPage.getBoundingClientRect();
+            let newX = e.clientX - rect.left - textDragOffset.x;
+            let newY = e.clientY - rect.top - textDragOffset.y;
+            
+            const blockRect = currentDragBlock.getBoundingClientRect();
+            newX = Math.max(0, Math.min(newX, rect.width - blockRect.width));
+            newY = Math.max(0, Math.min(newY, rect.height - blockRect.height));
+
+            currentDragBlock.style.left = `${newX}px`;
+            currentDragBlock.style.top = `${newY}px`;
+            currentDragBlock.style.transform = 'none';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isDraggingText && currentDragBlock && currentDragPage) {
+                const pageId = currentDragPage.dataset.id;
+                const pData = pagesData.find(p => p.id === pageId);
+                if (pData) {
+                    pData.textSettings.top = currentDragBlock.style.top;
+                    pData.textSettings.left = currentDragBlock.style.left;
+                    pData.textSettings.transform = 'none';
+                }
+            }
+            isDraggingText = false;
+            currentDragBlock = null;
+            currentDragPage = null;
+        });
+
+        function bindTextBlockEvents(block, pageData) {
+            block.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'DIV' && e.target.contentEditable === "true") return;
+                if (e.target.closest('.text-toolbar')) return;
+
+                isDraggingText = true;
+                currentDragBlock = block;
+                currentDragPage = block.closest('.page');
+                
+                const blockRect = block.getBoundingClientRect();
+                textDragOffset.x = e.clientX - blockRect.left;
+                textDragOffset.y = e.clientY - blockRect.top;
+                
+                if(block.style.transform.includes('translate')) {
+                    block.style.left = `${blockRect.left - currentDragPage.getBoundingClientRect().left}px`;
+                    block.style.top = `${blockRect.top - currentDragPage.getBoundingClientRect().top}px`;
+                    block.style.transform = 'none';
+                }
+                e.preventDefault();
+            });
+        }
+
+        function updateMasterText(key, value) {
+            masterText[key] = value;
+            document.querySelectorAll(`.text-${key}`).forEach(el => {
+                if (el !== document.activeElement) el.innerText = value;
+            });
+            if(key === 'title') document.querySelectorAll('.hc-title').forEach(el => el.innerText = value);
+            if(key === 'sub1') {
+                document.querySelectorAll('.hc-sub1').forEach(el => el.innerText = value);
+                syncDecorators();
+            }
+            if(key === 'sub2') {
+                document.querySelectorAll('.hc-sub2').forEach(el => el.innerText = value);
+                syncDecorators();
+            }
+        }
+        
+        function syncDecorators() {
+            document.querySelectorAll('.decorator-sub').forEach(el => {
+                el.innerHTML = `<span>${masterText.sub1}<br>${masterText.sub2}</span>`;
+            });
+        }
+
+        function updateTextSetting(btn, key, val) {
+            const block = btn.closest('.art-text-block');
+            const pageId = block.closest('.page').dataset.id;
+            const pData = pagesData.find(p => p.id === pageId);
+            
+            if (key === 'align') {
+                block.classList.remove('align-left', 'align-center', 'align-right');
+                block.classList.add(`align-${val}`);
+            } else if (key === 'theme') {
+                block.classList.remove('theme-white', 'theme-black');
+                block.classList.add(`theme-${val}`);
+            }
+            pData.textSettings[key] = val;
+        }
+
+        window.alignText = (btn, align) => updateTextSetting(btn, 'align', align);
+        window.themeText = (btn, theme) => updateTextSetting(btn, 'theme', theme);
+        window.posText = (btn, pos) => {
+            const block = btn.closest('.art-text-block');
+            const pageId = block.closest('.page').dataset.id;
+            const pData = pagesData.find(p => p.id === pageId);
+            
+            const positions = [
+                {t:'60px', l:'60px', tx:'0', ty:'0'},      {t:'60px', l:'300px', tx:'-50%', ty:'0'},      {t:'60px', l:'540px', tx:'-100%', ty:'0'},
+                {t:'400px', l:'60px', tx:'0', ty:'-50%'},  {t:'400px', l:'300px', tx:'-50%', ty:'-50%'},  {t:'400px', l:'540px', tx:'-100%', ty:'-50%'},
+                {t:'740px', l:'60px', tx:'0', ty:'-100%'}, {t:'740px', l:'300px', tx:'-50%', ty:'-100%'}, {t:'740px', l:'540px', tx:'-100%', ty:'-100%'}
+            ];
+            const p = positions[pos-1];
+            
+            block.style.top = p.t; block.style.left = p.l; block.style.transform = `translate(${p.tx}, ${p.ty})`;
+            pData.textSettings.top = p.t; pData.textSettings.left = p.l; pData.textSettings.transform = `translate(${p.tx}, ${p.ty})`;
+        };
+
+        document.getElementById('image-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file || !currentUploadTarget) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const imgInfo = {
+                    dataUrl: event.target.result,
+                    filename: file.name,
+                    scale: 1, x: 0, y: 0
+                };
+                
+                const pData = pagesData.find(p => p.id === currentUploadTarget.pageId);
+                pData.images[currentUploadTarget.idx] = imgInfo;
+                
+                const container = currentUploadTarget.container;
+                container.innerHTML = '';
+                
+                const img = new Image();
+                img.className = 'placed-img';
+                img.src = imgInfo.dataUrl;
+                img.dataset.filename = imgInfo.filename;
+                
+                img.onload = () => {
+                    const cRect = container.getBoundingClientRect();
+                    const minScale = Math.max(cRect.width / img.naturalWidth, cRect.height / img.naturalHeight);
+                    imgInfo.minScale = minScale;
+                    imgInfo.scale = minScale;
+                    img.dataset.minScale = minScale;
+                    img.dataset.scale = minScale;
+                    img.dataset.x = 0; img.dataset.y = 0;
+                    applyImgTransform(img);
+                };
+                container.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+            e.target.value = ''; 
+        });
+
+        let activeEditContainer = null;
+        let activeImg = null;
+        let imgTransform = { x: 0, y: 0, scale: 1 };
+        let dragState = { isDragging: false, startX: 0, startY: 0, initialX: 0, initialY: 0 };
+        let resizeState = { isResizing: false, startX: 0, startY: 0, initialScale: 1, dirX: 1, dirY: 1 };
+
+        function enterImageEditMode(imgElement, pageId, idx) {
+            if (activeEditContainer) exitImageEditMode();
+            
+            activeImg = imgElement;
+            activeEditContainer = activeImg.closest('.img-container');
+            
+            imgTransform.x = parseFloat(activeImg.dataset.x || 0);
+            imgTransform.y = parseFloat(activeImg.dataset.y || 0);
+            imgTransform.scale = parseFloat(activeImg.dataset.scale || 1);
+            
+            const overlay = document.createElement('div');
+            overlay.className = 'img-edit-overlay';
+            overlay.innerHTML = `
+                <div class="resize-handle handle-tl"></div>
+                <div class="resize-handle handle-tr"></div>
+                <div class="resize-handle handle-bl"></div>
+                <div class="resize-handle handle-br"></div>
+                <button class="btn-replace-img" onclick="replaceImg('${pageId}', ${idx}, event)"><i class="fas fa-sync-alt mr-1"></i>更換圖片</button>
+            `;
+            activeEditContainer.appendChild(overlay);
+
+            activeImg.addEventListener('mousedown', handleImgDragStart);
+            activeEditContainer.addEventListener('wheel', handleImgWheel, { passive: false });
+            overlay.querySelectorAll('.resize-handle').forEach(h => h.addEventListener('mousedown', handleImgResizeStart));
+            
+            document.addEventListener('mousedown', clickOutsideToExit);
+        }
+
+        window.replaceImg = function(pageId, idx, e) {
+            e.stopPropagation();
+            exitImageEditMode();
+            const container = document.querySelector(`.page[data-id="${pageId}"] .layout-grid .img-container:nth-child(${idx+1})`);
+            currentUploadTarget = { pageId, idx, container };
+            document.getElementById('image-upload').click();
+        }
+
+        function exitImageEditMode() {
+            if (activeEditContainer) {
+                const overlay = activeEditContainer.querySelector('.img-edit-overlay');
+                if (overlay) overlay.remove();
+                
+                activeImg.removeEventListener('mousedown', handleImgDragStart);
+                activeEditContainer.removeEventListener('wheel', handleImgWheel);
+                
+                const pageEl = activeEditContainer.closest('.page');
+                const containers = Array.from(pageEl.querySelector('.layout-grid').querySelectorAll('.img-container'));
+                const idx = containers.indexOf(activeEditContainer);
+                const pData = pagesData.find(p => p.id === pageEl.dataset.id);
+                
+                if (pData && pData.images[idx]) {
+                    pData.images[idx].x = imgTransform.x;
+                    pData.images[idx].y = imgTransform.y;
+                    pData.images[idx].scale = imgTransform.scale;
+                    activeImg.dataset.x = imgTransform.x;
+                    activeImg.dataset.y = imgTransform.y;
+                    activeImg.dataset.scale = imgTransform.scale;
+                }
+            }
+            activeEditContainer = null; activeImg = null;
+            document.removeEventListener('mousedown', clickOutsideToExit);
+        }
+
+        function clickOutsideToExit(e) {
+            if (activeEditContainer && !activeEditContainer.contains(e.target)) exitImageEditMode();
+        }
+
+        function handleImgDragStart(e) {
+            dragState = { isDragging: true, startX: e.clientX, startY: e.clientY, initialX: imgTransform.x, initialY: imgTransform.y };
+            document.addEventListener('mousemove', handleImgDragMove);
+            document.addEventListener('mouseup', handleImgDragEnd);
+            e.preventDefault();
+        }
+        function handleImgDragMove(e) {
+            if (!dragState.isDragging) return;
+            imgTransform.x = dragState.initialX + (e.clientX - dragState.startX);
+            imgTransform.y = dragState.initialY + (e.clientY - dragState.startY);
+            enforceBounds();
+        }
+        function handleImgDragEnd() {
+            dragState.isDragging = false;
+            document.removeEventListener('mousemove', handleImgDragMove);
+            document.removeEventListener('mouseup', handleImgDragEnd);
+        }
+
+        function handleImgResizeStart(e) {
+            const isLeft = e.target.classList.contains('handle-tl') || e.target.classList.contains('handle-bl');
+            const isTop = e.target.classList.contains('handle-tl') || e.target.classList.contains('handle-tr');
+            
+            resizeState = { 
+                isResizing: true, 
+                startX: e.clientX, 
+                startY: e.clientY, 
+                initialScale: imgTransform.scale,
+                dirX: isLeft ? -1 : 1,
+                dirY: isTop ? -1 : 1
+            };
+            document.addEventListener('mousemove', handleImgResizeMove);
+            document.addEventListener('mouseup', handleImgResizeEnd);
+            e.stopPropagation(); e.preventDefault();
+        }
+        function handleImgResizeMove(e) {
+            if (!resizeState.isResizing) return;
+            const dx = e.clientX - resizeState.startX;
+            const dy = e.clientY - resizeState.startY;
+            const delta = (dx * resizeState.dirX + dy * resizeState.dirY) * 0.003;
+            
+            imgTransform.scale = Math.max(parseFloat(activeImg.dataset.minScale), resizeState.initialScale + delta);
+            enforceBounds();
+        }
+        function handleImgResizeEnd() {
+            resizeState.isResizing = false;
+            document.removeEventListener('mousemove', handleImgResizeMove);
+            document.removeEventListener('mouseup', handleImgResizeEnd);
+        }
+        function handleImgWheel(e) {
+            if (!activeEditContainer) return;
+            const rect = activeEditContainer.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                e.preventDefault();
+                const zoomDir = e.deltaY > 0 ? -1 : 1;
+                imgTransform.scale = Math.max(parseFloat(activeImg.dataset.minScale), imgTransform.scale + (zoomDir * 0.05 * imgTransform.scale));
+                enforceBounds();
+            }
+        }
+
+        function enforceBounds() {
+            if (!activeImg || !activeEditContainer) return;
+            const cRect = activeEditContainer.getBoundingClientRect();
+            const minScale = parseFloat(activeImg.dataset.minScale);
+            
+            imgTransform.scale = Math.max(imgTransform.scale, minScale);
+            const scaledW = activeImg.naturalWidth * imgTransform.scale;
+            const scaledH = activeImg.naturalHeight * imgTransform.scale;
+            
+            imgTransform.x = Math.min(0, Math.max(imgTransform.x, cRect.width - scaledW));
+            imgTransform.y = Math.min(0, Math.max(imgTransform.y, cRect.height - scaledH));
+            
+            applyImgTransform(activeImg);
+        }
+
+        function applyImgTransform(img) {
+            let x, y, scale;
+            if (img === activeImg) {
+                x = imgTransform.x !== undefined ? imgTransform.x : parseFloat(img.dataset.x || 0);
+                y = imgTransform.y !== undefined ? imgTransform.y : parseFloat(img.dataset.y || 0);
+                scale = imgTransform.scale !== undefined ? imgTransform.scale : parseFloat(img.dataset.scale || 1);
+            } else {
+                x = parseFloat(img.dataset.x || 0);
+                y = parseFloat(img.dataset.y || 0);
+                scale = parseFloat(img.dataset.scale || 1);
+            }
+            img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+        }
+
+        function generateId() { return Math.random().toString(36).substr(2, 9); }
+
+        function freezeContainerQueries(element) {
+            const backups = [];
+            backups.push({ el: element, cssText: element.style.cssText });
+
+            function processNode(node) {
+                if (node.nodeType !== Node.ELEMENT_NODE) return;
+                const el = node;
+
+                if (el.classList && el.classList.contains('h-cover-side-bar')) {
+                    const rect = el.getBoundingClientRect();
+                    backups.push({ el, cssText: el.style.cssText });
+                    el.style.flex = 'none';
+                    el.style.width = rect.width + 'px';
+                    el.style.height = rect.height + 'px';
+                    return;
+                }
+
+                if (el.classList && el.classList.contains('art-text-block')) {
+                    const parentRect = el.parentElement ? el.parentElement.getBoundingClientRect() : null;
+                    const rect = el.getBoundingClientRect();
+                    if (parentRect) {
+                        backups.push({ el, cssText: el.style.cssText });
+                        el.style.top = (rect.top - parentRect.top) + 'px';
+                        el.style.left = (rect.left - parentRect.left) + 'px';
+                        el.style.transform = 'none';
+                        for (const child of el.children) {
+                            processNode(child);
+                        }
+                        return;
+                    }
+                }
+
+                for (const child of el.children) {
+                    processNode(child);
+                }
+            }
+
+            processNode(element);
+            return backups;
+        }
+
+        function restoreContainerQueries(backups) {
+            for (let i = backups.length - 1; i >= 0; i--) {
+                const item = backups[i];
+                item.el.style.cssText = item.cssText;
+            }
+        }
+
+        async function exportProject() {
+            const btn = document.getElementById('btn-export');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>匯出處理中...';
+            btn.disabled = true;
+
+            const zip = new JSZip();
+            const landscapeFolder = zip.folder("Landscape (3-2)");
+            const portraitFolder = zip.folder("Portrait (3-4)");
+
+            const record = {
+                version: "1.0",
+                globalBgColor: currentGlobalBgColor,
+                masterText: masterText,
+                pages: pagesData.map(p => {
+                    const cleanP = {...p};
+                    cleanP.images = p.images.map(img => img ? { filename: img.filename, scale: img.scale, x: img.x, y: img.y } : null);
+                    return cleanP;
+                })
+            };
+            zip.file("record.txt", JSON.stringify(record, null, 2));
+
+            document.querySelectorAll('.control-left, .control-right').forEach(el => el.style.display = 'none');
+            if (activeEditContainer) exitImageEditMode();
+            document.querySelectorAll('[contenteditable="true"]').forEach(el => el.blur());
+
+            await document.fonts.ready;
+            await new Promise(r => setTimeout(r, 250));
+
+            try {
+                const hCover = document.querySelector('.page.horizontal-cover');
+                if (hCover) {
+                    const w = Math.round(hCover.getBoundingClientRect().width);
+                    const h = Math.round(hCover.getBoundingClientRect().height);
+                    const backups = freezeContainerQueries(hCover);
+                    const canvasH = await html2canvas(hCover, {
+                        scale: 2, useCORS: true, backgroundColor: currentGlobalBgColor, 
+                        width: w, height: h, windowWidth: w, windowHeight: h
+                    });
+                    restoreContainerQueries(backups);
+                    landscapeFolder.file(`Cover_Horizontal.jpg`, canvasH.toDataURL("image/jpeg", 0.9).split(',')[1], {base64: true});
+                }
+
+                const vCover = document.querySelector('.page.vertical-cover');
+                if (vCover) {
+                    const w = Math.round(vCover.getBoundingClientRect().width);
+                    const h = Math.round(vCover.getBoundingClientRect().height);
+                    const backups = freezeContainerQueries(vCover);
+                    const canvasV = await html2canvas(vCover, {
+                        scale: 2, useCORS: true, backgroundColor: currentGlobalBgColor, 
+                        width: w, height: h, windowWidth: w, windowHeight: h
+                    });
+                    restoreContainerQueries(backups);
+                    portraitFolder.file(`Cover_Vertical.jpg`, canvasV.toDataURL("image/jpeg", 0.9).split(',')[1], {base64: true});
+                }
+
+                const spreads = document.querySelectorAll('.spread');
+                let pIndex = 1;
+                for (let spread of spreads) {
+                    const left = spread.querySelector('.page-left');
+                    const right = spread.querySelector('.page-right');
+
+                    const sw = Math.round(spread.getBoundingClientRect().width);
+                    const sh = Math.round(spread.getBoundingClientRect().height);
+                    const backupsSpread = freezeContainerQueries(spread);
+                    const cSpread = await html2canvas(spread, {
+                        scale: 2, useCORS: true, backgroundColor: currentGlobalBgColor, 
+                        width: sw, height: sh, windowWidth: sw, windowHeight: sh
+                    });
+                    restoreContainerQueries(backupsSpread);
+                    landscapeFolder.file(`Content_Spread_${String(pIndex).padStart(2, '0')}.jpg`, cSpread.toDataURL("image/jpeg", 0.9).split(',')[1], {base64: true});
+
+                    if (left && left.innerHTML !== '') {
+                        const origBorder = left.style.borderRight;
+                        const origShadow = left.style.boxShadow;
+                        left.style.borderRight = 'none';
+                        left.style.boxShadow = 'none';
+
+                        const lw = Math.round(left.getBoundingClientRect().width);
+                        const lh = Math.round(left.getBoundingClientRect().height);
+                        const backupsLeft = freezeContainerQueries(left);
+                        const cLeft = await html2canvas(left, {
+                            scale: 2, useCORS: true, backgroundColor: currentGlobalBgColor, 
+                            width: lw, height: lh, windowWidth: lw, windowHeight: lh
+                        });
+                        restoreContainerQueries(backupsLeft);
+                        portraitFolder.file(`Page_${String(pIndex).padStart(2, '0')}_Left.jpg`, cLeft.toDataURL("image/jpeg", 0.9).split(',')[1], {base64: true});
+
+                        left.style.borderRight = origBorder;
+                        left.style.boxShadow = origShadow;
+                    }
+
+                    if (right && right.innerHTML !== '') {
+                        const origShadow = right.style.boxShadow;
+                        right.style.boxShadow = 'none';
+
+                        const rw = Math.round(right.getBoundingClientRect().width);
+                        const rh = Math.round(right.getBoundingClientRect().height);
+                        const backupsRight = freezeContainerQueries(right);
+                        const cRight = await html2canvas(right, {
+                            scale: 2, useCORS: true, backgroundColor: currentGlobalBgColor, 
+                            width: rw, height: rh, windowWidth: rw, windowHeight: rh
+                        });
+                        restoreContainerQueries(backupsRight);
+                        portraitFolder.file(`Page_${String(pIndex).padStart(2, '0')}_Right.jpg`, cRight.toDataURL("image/jpeg", 0.9).split(',')[1], {base64: true});
+
+                        right.style.boxShadow = origShadow;
+                    }
+                    pIndex++;
+                }
+
+                const content = await zip.generateAsync({type:"blob"});
+                saveAs(content, "Magazine_Project.zip");
+
+            } catch (err) {
+                console.error("Export Error: ", err);
+                alert("匯出過程發生錯誤，請查看 Console 了解詳情。");
+            } finally {
+                btn.innerHTML = '<i class="fas fa-file-export mr-2"></i>匯出專案 (ZIP)';
+                btn.disabled = false;
+                renderWorkspace();
+            }
+        }
+
+        let pendingImportData = null;
+        function importProject(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    pendingImportData = JSON.parse(evt.target.result);
+                    currentGlobalBgColor = pendingImportData.globalBgColor;
+                    masterText = pendingImportData.masterText;
+                    document.getElementById('global-bg-color').value = currentGlobalBgColor;
+                    
+                    pagesData = pendingImportData.pages;
+                    renderWorkspace();
+
+                    alert('專案框架已載入！請接著選擇包含「原始圖片」的資料夾來還原圖片。');
+                    document.getElementById('import-images').click();
+                } catch(err) {
+                    alert("檔案格式錯誤！請確保匯入的是 record.txt");
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        function processImportedImages(e) {
+            if (!pendingImportData) return;
+            const files = Array.from(e.target.files);
+            
+            pagesData.forEach(page => {
+                page.images.forEach((imgInfo, idx) => {
+                    if (imgInfo && imgInfo.filename) {
+                        const matchedFile = files.find(f => f.name === imgInfo.filename);
+                        if (matchedFile) {
+                            const reader = new FileReader();
+                            reader.onload = function(evt) {
+                                page.images[idx].dataUrl = evt.target.result;
+                                renderWorkspace();
+                            };
+                            reader.readAsDataURL(matchedFile);
+                        }
+                    }
+                });
+            });
+            pendingImportData = null; 
+            e.target.value = '';
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>

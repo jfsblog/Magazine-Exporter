@@ -1,0 +1,16 @@
+# 忽略不需要的備份或失敗版本資料夾
+FAIL VERSION | 20260816-Magzine-Tool/
+
+# 忽略龐大的 Node 模組 (通常是 node_modules，我把含有空格的版本也加上防呆)
+node modules/
+node_modules/
+
+# 忽略字型檔
+aAccountantSignature.otf
+Cinzel-VariableFont_wght.ttf
+GlowSansTC-Compressed-Light.otf
+NotoSerifTC-Black.ttf
+
+# (可選) 如果你也想忽略 Mac 或 Windows 產生的系統隱藏檔，可以保留下面這兩行
+.DS_Store
+Thumbs.db

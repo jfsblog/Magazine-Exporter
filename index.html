@@ -155,7 +155,7 @@
             position: absolute;
             bottom: 15px;
             left: 15px;
-            font-family: 'aAccountantSignature', cursive;
+            font-family: 'aAccountantSignature', cursive !important;
             color: #f4f4f4;
             font-size: 20px;
             pointer-events: none; /* 確保不會阻礙底下滑鼠拖曳照片 */
@@ -255,12 +255,12 @@
         .theme-white { color: #f4f4f4; }
         .theme-black { color: #222222; }
 
-        /* === 橫向封面專用文字 (純 PX 設計) === */
+        /* === 橫向封面專用排版 === */
         .h-cover-custom-text {
             position: absolute;
             inset: 0;
             z-index: 30;
-            pointer-events: none; 
+            pointer-events: none;
         }
         .h-cover-top-banner {
             position: absolute;
@@ -272,48 +272,92 @@
         }
         .h-cover-side-bar {
             flex-grow: 1;
-            height: 68px; 
-            background-color: rgba(255, 255, 255, 0.4); 
-            transform: translateY(-2px); 
+            height: 68px;
+            background-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
         }
         .h-cover-main-text {
             font-family: 'Cinzel', serif;
-            font-size: 94px; 
+            font-size: 94px;
             font-weight: bold;
             color: #f4f4f4;
             padding: 0 20px;
             line-height: 1;
         }
-        .h-cover-bottom-text {
+        .h-cover-left-info {
+            position: absolute;
+            top: 140px;
+            left: 40px;
+            background-color: transparent;
+            padding: 0;
+            font-family: 'Cinzel', sans-serif;
+            font-size: 10px;
+            color: #f4f4f4;
+            line-height: 1.6;
+            letter-spacing: 1px;
+        }
+        .h-cover-right-vertical {
             position: absolute;
             bottom: 40px;
+            right: 40px;
+            font-family: 'NotoSerifTC', serif;
+            font-weight: 900;
+            font-size: 42px;
+            color: #f4f4f4;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            letter-spacing: 8px;
+            line-height: 1;
+            text-shadow: none;
+        }
+
+        /* === 直式封面專用排版 === */
+        .v-cover-custom-text {
+            position: absolute;
+            inset: 0;
+            z-index: 30;
+            pointer-events: none;
+        }
+        .v-cover-top-banner {
+            position: absolute;
+            top: 30px;
             left: 0;
             width: 100%;
             text-align: center;
-            display: block;
         }
-        .hc-title {
-            font-family: 'GlowSansTC', sans-serif;
-            font-size: 15px;
+        .v-cover-main-text {
+            font-family: 'Cinzel', serif;
+            font-size: 74px;
+            font-weight: bold;
             color: #f4f4f4;
-            padding-bottom: 9px;
-            line-height: 1.2;
             letter-spacing: 2px;
+            line-height: 1;
         }
-        .hc-sub1 {
-            font-family: 'Cinzel', serif;
-            font-size: 10px; 
+        .v-cover-left-info {
+            position: absolute;
+            top: 110px;
+            left: 30px;
+            background-color: transparent;
+            padding: 0;
+            font-family: 'Cinzel', sans-serif;
+            font-size: 9px;
             color: #f4f4f4;
-            letter-spacing: 0.2em;
-            padding-bottom: 5px;
-            line-height: 1.2;
+            line-height: 1.6;
+            letter-spacing: 1px;
         }
-        .hc-sub2 {
-            font-family: 'Cinzel', serif;
-            font-size: 10px; 
+        .v-cover-bottom-horizontal {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'NotoSerifTC', serif;
+            font-weight: 900;
+            font-size: 32px;
             color: #f4f4f4;
-            letter-spacing: 0.2em;
-            line-height: 1.2;
+            letter-spacing: 4px;
+            line-height: 1;
+            white-space: nowrap;
+            text-shadow: none;
         }
 
         /* 圖片編輯覆蓋層 */
@@ -399,29 +443,55 @@
 <body class="flex h-screen">
 
     <div class="w-48 bg-[#2d2d2d] flex flex-col border-r border-gray-700 z-50 shrink-0 h-full overflow-hidden">
-        <div class="p-4 border-b border-gray-700 bg-[#222]">
-            <h1 class="text-white font-bold text-center tracking-wider text-sm">MAGAZINE<br>LAYOUT</h1>
+        <div class="p-3 border-b border-gray-700 bg-[#222] flex items-center justify-between">
+            <h1 class="text-white font-bold tracking-wider text-xs">MAGAZINE<br>LAYOUT</h1>
+            <!-- 修改左上角的兩個 Icon -->
+            <div class="flex items-center gap-1.5">
+                <!-- 匯入按鈕：改成資料夾開啟圖示 (fa-folder-open) -->
+                <button type="button" onclick="document.getElementById('import-file').click()" class="w-7 h-7 bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white rounded flex items-center justify-center text-xs cursor-pointer transition-colors" title="匯入專案設定 (TXT)">
+                    <i class="fas fa-folder-open"></i>
+                </button>
+                <!-- 匯出按鈕：改成儲存/下載圖示 (fa-save 或 fa-download) -->
+                <button id="btn-export" onclick="exportProject()" class="w-7 h-7 bg-blue-600 hover:bg-blue-500 text-white rounded flex items-center justify-center text-xs cursor-pointer transition-colors" title="匯出專案 (ZIP)">
+                    <i class="fas fa-save"></i>
+                </button>
+            </div>
         </div>
         
         <div class="p-4 border-b border-gray-700">
             <div class="text-xs text-gray-400 mb-2">全局背景色</div>
             <input type="color" id="global-bg-color" value="#D3C3A3" class="w-full h-8 rounded cursor-pointer bg-transparent border-0 p-0">
         </div>
-        
-        <div class="p-4 border-b border-gray-700 flex flex-col gap-2">
-            <!-- 匯出按鈕 -->
-            <button id="btn-export" onclick="exportProject()" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded text-sm transition-colors"><i class="fas fa-file-export mr-2"></i>匯出專案 (ZIP)</button>
-            
-            <div class="w-full h-px bg-gray-600 my-1"></div>
-            
-            <!-- 展開式匯入選單 -->
-            <button onclick="toggleImportPanel()" class="w-full flex justify-between items-center py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-sm transition-colors px-3">
-                <span><i class="fas fa-folder-open mr-2"></i>匯入專案</span>
-                <i id="import-chevron" class="fas fa-chevron-down transition-transform"></i>
-            </button>
-            
-            <!-- 隱藏的匯入面板 -->
-            <div id="import-panel" class="hidden flex-col gap-3 mt-1 bg-[#222] p-3 rounded border border-gray-600 text-sm">
+
+        <div class="p-4 border-b border-gray-700 flex flex-col gap-2 bg-[#222]">
+            <div class="text-xs text-gray-400 mb-1 font-bold">主題資訊設定</div>
+            <div>
+                <label for="input-category" class="text-[10px] text-gray-400">分類 (TRAVEL/FOODIE...)</label>
+                <input type="text" id="input-category" value="TRAVEL" class="w-full bg-[#1a1a1a] text-white text-xs px-2 py-1 rounded border border-gray-600 focus:outline-none focus:border-purple-500 mb-1" oninput="updateMasterTextFromInput()">
+                <div class="flex gap-1">
+                    <button type="button" onclick="setCategory('TRAVEL')" class="px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 text-[9px] text-gray-300 rounded">旅遊</button>
+                    <button type="button" onclick="setCategory('FOODIE')" class="px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 text-[9px] text-gray-300 rounded">美食</button>
+                    <button type="button" onclick="setCategory('STAY')" class="px-1.5 py-0.5 bg-gray-700 hover:bg-gray-600 text-[9px] text-gray-300 rounded">旅宿</button>
+                </div>
+            </div>
+            <div>
+                <div class="relative">
+                    <label for="input-city" class="text-[10px] text-gray-400">城市名稱 (可搜尋中/英文)</label>
+                    <input type="text" id="input-city" value="Taichung" placeholder="輸入中文或英文搜尋..." class="w-full bg-[#1a1a1a] text-white text-xs px-2 py-1 rounded border border-gray-600 focus:outline-none focus:border-purple-500" oninput="filterCityDropdown(this.value)" onfocus="filterCityDropdown(this.value)" autocomplete="off">
+                    <div id="city-dropdown" class="absolute left-0 right-0 top-full mt-1 bg-[#222] border border-gray-600 rounded shadow-lg max-h-40 overflow-y-auto hidden z-50" role="listbox"></div>
+                </div>
+            </div>
+            <div>
+                <label for="input-spot-en" class="text-[10px] text-gray-400">景點英文名稱 (可省略)</label>
+                <input type="text" id="input-spot-en" value="" placeholder="例: Lvlv Inn" class="w-full bg-[#1a1a1a] text-white text-xs px-2 py-1 rounded border border-gray-600 focus:outline-none focus:border-purple-500" oninput="updateMasterTextFromInput()">
+            </div>
+            <div>
+                <label for="input-spot-cn" class="text-[10px] text-gray-400">景點中文名稱</label>
+                <input type="text" id="input-spot-cn" value="葉綠宿" class="w-full bg-[#1a1a1a] text-white text-xs px-2 py-1 rounded border border-gray-600 focus:outline-none focus:border-purple-500" oninput="updateMasterTextFromInput()">
+            </div>
+        </div>
+
+        <div id="import-panel" class="hidden flex-col gap-3 mt-auto p-3 bg-[#222] border-t border-gray-700 text-sm">
                 <!-- 設定文件 -->
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-gray-400 whitespace-nowrap text-xs">設定文件</span>
@@ -436,29 +506,29 @@
                 </div>
                 <!-- 開始匯入 -->
                 <button onclick="executeImport()" class="w-full mt-1 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded text-xs transition-colors"><i class="fas fa-play mr-2"></i>開始匯入</button>
-            </div>
-            
-            <!-- 隱藏的輸入元件 (由自動執行改為觸發紀錄函式) -->
-            <input type="file" id="import-file" class="hidden" accept=".txt" onchange="handleTxtSelect(event)">
-            <input type="file" id="import-images" class="hidden" webkitdirectory directory multiple onchange="handleImgSelect(event)">
         </div>
+        <input type="file" id="import-file" class="hidden" accept=".txt" onchange="handleTxtSelect(event)">
+        <input type="file" id="import-images" class="hidden" webkitdirectory directory multiple onchange="handleImgSelect(event)">
 
-        <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
-            <div class="text-xs text-gray-400 mb-3 flex justify-between items-center">
-                <span>頁面大綱</span>
-                <button onclick="addStandardSpread()" class="hover:text-white shrink-0" title="新增空白跨頁"><i class="fas fa-plus"></i></button>
-            </div>
-            
-            <div id="static-thumbs-container" class="flex flex-col gap-4 mb-4 pb-4 border-b border-gray-700 shrink-0"></div>
-            <div id="sortable-thumbs-container" class="flex flex-col gap-4 pb-10"></div>
-        </div>
     </div>
 
     <!-- 編輯主區塊 -->
     <div class="flex-1 flex flex-col h-screen overflow-y-auto custom-scrollbar relative bg-[#1a1a1a]" id="main-scroll-area">
         <div class="magazine-container" id="workspace"></div>
     </div>
-    
+
+    <div class="w-48 bg-[#2d2d2d] flex flex-col border-l border-gray-700 z-50 shrink-0 h-full overflow-hidden">
+        <div class="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar flex flex-col">
+            <div id="static-thumbs-container" class="flex flex-col gap-4 mb-4 pb-4 border-b border-gray-700 shrink-0"></div>
+            <div id="sortable-thumbs-container" class="flex flex-col gap-4 pb-4"></div>
+            <div class="mt-auto pt-4 pb-10 flex justify-center">
+                <button onclick="addStandardSpread()" class="w-full py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded border border-dashed border-gray-600 flex items-center justify-center gap-2 text-xs transition-colors cursor-pointer" title="新增跨頁">
+                    <i class="fas fa-plus"></i> 新增跨頁
+                </button>
+            </div>
+        </div>
+    </div>
+
     <input type="file" id="image-upload" class="hidden" accept="image/*">
 
     <!-- 模板定義 -->
@@ -510,11 +580,22 @@
         let currentGlobalBgColor = '#D3C3A3';
         let currentUploadTarget = null;
         let masterText = {
-            signature: 'Shengle Wang',
-            title: '葉綠宿',
-            sub1: 'TAICHUNG / XITUN',
-            sub2: 'STROLLTIMES.COM',
-            timesColor: '#f4f4f4'
+            category: 'TRAVEL',
+            city: 'Taichung',
+            spotEn: '',
+            spotCn: '葉綠宿',
+            strollColor: '#f4f4f4',
+            timesColor: '#f4f4f4',
+            barColor: '#ffffff',
+            barOpacity: 0.4
+        };
+
+        const cityMap = {
+            '台北': 'Taipei', '新北': 'New Taipei', '基隆': 'Keelung', '桃園': 'Taoyuan',
+            '新竹': 'Hsinchu', '苗栗': 'Miaoli', '台中': 'Taichung', '彰化': 'Changhua',
+            '南投': 'Nantou', '雲林': 'Yunlin', '嘉義': 'Chiayi', '台南': 'Tainan',
+            '高雄': 'Kaohsiung', '屏東': 'Pingtung', '澎湖': 'Penghu', '宜蘭': 'Yilan',
+            '花蓮': 'Hualien', '台東': 'Taitung', '金門': 'Kinmen', '馬祖': 'Matsu'
         };
 
         const workspace = document.getElementById('workspace');
@@ -522,6 +603,7 @@
         const sortableThumbsContainer = document.getElementById('sortable-thumbs-container');
 
         function init() {
+            syncMasterTextInputs();
             pagesData = [
                 { id: generateId(), type: 'h-cover', layout: '1', images: [], hasText: true, pageType: 'horizontal-cover' },
                 { id: generateId(), type: 'v-cover', layout: '1', images: [], hasText: true, pageType: 'vertical-cover' },
@@ -817,16 +899,22 @@
             }
 
             const existingHCText = el.querySelector('.h-cover-custom-text');
+            const existingVCText = el.querySelector('.v-cover-custom-text');
             const existingArtText = el.querySelector('.art-text-block');
             
             if (pageData.hasText) {
                 if (pageData.pageType === 'horizontal-cover') {
                     if (!existingHCText) el.appendChild(createHCoverText());
+                    else updateHCoverContent(existingHCText);
+                } else if (pageData.pageType === 'vertical-cover') {
+                    if (!existingVCText) el.appendChild(createVCoverText());
+                    else updateVCoverContent(existingVCText);
                 } else {
                     if (!existingArtText) el.appendChild(createTextBlock(pageData));
                 }
             } else {
                 if (existingHCText) existingHCText.remove();
+                if (existingVCText) existingVCText.remove();
                 if (existingArtText) existingArtText.remove();
             }
 
@@ -847,7 +935,7 @@
                 if (!existingSub) {
                     const sub = document.createElement('div');
                     sub.className = 'center-decorator decorator-sub';
-                    sub.innerHTML = `<span>${masterText.sub1}<br>${masterText.sub2}</span>`;
+                    sub.innerHTML = `<span>${masterText.category}<br>${masterText.city}</span>`;
                     el.appendChild(sub);
                 }
             } else {
@@ -862,7 +950,14 @@
                     <button class="btn-layout w-8 h-8 rounded text-gray-400 hover:bg-gray-700" data-layout="h2" title="左右併圖"><i class="fas fa-columns"></i></button>
                     <div class="w-px h-6 bg-gray-700 mx-1 mt-1"></div>
                     <button class="btn-toggle btn-text w-8 h-8 rounded text-white" title="主視覺文字"><i class="fas fa-font"></i></button>
-                    <input type="color" class="btn-times-color w-8 h-8 rounded cursor-pointer bg-transparent border-0 p-0 ml-1" value="${masterText.timesColor}" title="更改 TIMES 文字顏色">
+                    <div class="flex items-center gap-1 ml-1">
+                        <span class="text-[10px] text-gray-400">標題色:</span>
+                        <input type="color" class="btn-stroll-color w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0" value="${masterText.strollColor}" title="更改 STROLL 顏色">
+                        <input type="color" class="btn-times-color w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0" value="${masterText.timesColor}" title="更改 TIMES 顏色">
+                        <span class="text-[10px] text-gray-400 ml-1">方塊色:</span>
+                        <input type="color" class="btn-bar-color w-6 h-6 rounded cursor-pointer bg-transparent border-0 p-0" value="${masterText.barColor || '#ffffff'}" title="更改方塊顏色">
+                        <input type="range" class="btn-bar-opacity w-12 cursor-pointer" min="0" max="1" step="0.05" value="${masterText.barOpacity ?? 0.4}" title="調整方塊透明度">
+                    </div>
                 `;
             } else if (type === 'v-cover') {
                 return `
@@ -926,11 +1021,32 @@
             toggleBtn('.btn-logo', 'hasLogo', 'bg-green-600');
             toggleBtn('.btn-sub', 'hasSub', 'bg-orange-600');
 
+            const strollPicker = groupEl.querySelector('.btn-stroll-color');
             const timesPicker = groupEl.querySelector('.btn-times-color');
+            const barPicker = groupEl.querySelector('.btn-bar-color');
+            const barOpacityRange = groupEl.querySelector('.btn-bar-opacity');
+            if (strollPicker) {
+                strollPicker.addEventListener('input', (e) => {
+                    masterText.strollColor = e.target.value;
+                    document.querySelectorAll('.hc-stroll, .vc-stroll').forEach(el => el.style.color = masterText.strollColor);
+                });
+            }
             if (timesPicker) {
                 timesPicker.addEventListener('input', (e) => {
                     masterText.timesColor = e.target.value;
-                    document.querySelectorAll('.hc-times').forEach(el => el.style.color = masterText.timesColor);
+                    document.querySelectorAll('.hc-times, .vc-times').forEach(el => el.style.color = masterText.timesColor);
+                });
+            }
+            if (barPicker) {
+                barPicker.addEventListener('input', (e) => {
+                    masterText.barColor = e.target.value;
+                    updateBars();
+                });
+            }
+            if (barOpacityRange) {
+                barOpacityRange.addEventListener('input', (e) => {
+                    masterText.barOpacity = parseFloat(e.target.value);
+                    updateBars();
                 });
             }
         }
@@ -938,20 +1054,172 @@
         function createHCoverText() {
             const hcText = document.createElement('div');
             hcText.className = 'h-cover-custom-text';
-            hcText.innerHTML = `
-                <div class="h-cover-top-banner">
-                    <div class="h-cover-side-bar"></div>
-                    <div class="h-cover-main-text">
-                        <span>STROLL</span><span class="hc-times" style="color: ${masterText.timesColor}; transition: color 0.2s;">TIMES</span>
-                    </div>
-                    <div class="h-cover-side-bar"></div>
-                </div>
-                <div class="h-cover-bottom-text">
-                    <div class="hc-title">${masterText.title}</div>
-                    <div class="hc-sub1">${masterText.sub1}</div>
-                    <div class="hc-sub2">${masterText.sub2}</div>
-                </div>`;
+            updateHCoverContent(hcText);
             return hcText;
+        }
+
+        function updateHCoverContent(container) {
+            const spotEnLine = masterText.spotEn ? `${masterText.spotEn}<br>` : '';
+            const currentBarBg = hexToRgba(masterText.barColor || '#ffffff', masterText.barOpacity ?? 0.4);
+            container.innerHTML = `
+                <div class="h-cover-top-banner">
+                    <div class="h-cover-side-bar" style="background-color: ${currentBarBg};"></div>
+                    <div class="h-cover-main-text">
+                        <span class="hc-stroll" style="color: ${masterText.strollColor};">STROLL</span><span class="hc-times" style="color: ${masterText.timesColor};">TIMES</span>
+                    </div>
+                    <div class="h-cover-side-bar" style="background-color: ${currentBarBg};"></div>
+                </div>
+                <div class="h-cover-left-info">
+                    ${masterText.category} / ${masterText.city}<br>
+                    ${spotEnLine}
+                    WEBSITE / STROLLTIMES<br>
+                    PHOTOGRAPHY / Shengle
+                </div>
+                <div class="h-cover-right-vertical">${masterText.spotCn}</div>`;
+        }
+
+        function hexToRgba(hex, opacity) {
+            let color = hex.replace('#', '');
+            if (color.length === 3) color = color.split('').map(char => char + char).join('');
+            const value = parseInt(color, 16);
+            return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, ${opacity})`;
+        }
+
+        function updateBars() {
+            const currentBarBg = hexToRgba(masterText.barColor || '#ffffff', masterText.barOpacity ?? 0.4);
+            document.querySelectorAll('.h-cover-side-bar').forEach(el => el.style.backgroundColor = currentBarBg);
+        }
+
+        function createVCoverText() {
+            const vcText = document.createElement('div');
+            vcText.className = 'v-cover-custom-text';
+            updateVCoverContent(vcText);
+            return vcText;
+        }
+
+        function updateVCoverContent(container) {
+            const spotEnLine = masterText.spotEn ? `${masterText.spotEn}<br>` : '';
+            container.innerHTML = `
+                <div class="v-cover-top-banner">
+                    <div class="v-cover-main-text">
+                        <span class="vc-stroll" style="color: ${masterText.strollColor};">STROLL</span><span class="vc-times" style="color: ${masterText.timesColor};">TIMES</span>
+                    </div>
+                </div>
+                <div class="v-cover-left-info">
+                    ${masterText.category} / ${masterText.city}<br>
+                    ${spotEnLine}
+                    WEBSITE / STROLLTIMES<br>
+                    PHOTOGRAPHY / Shengle
+                </div>
+                <div class="v-cover-bottom-horizontal">${masterText.spotCn}</div>`;
+        }
+
+        function updateMasterTextFromInput() {
+            masterText.category = document.getElementById('input-category').value;
+            masterText.city = document.getElementById('input-city').value;
+            masterText.spotEn = document.getElementById('input-spot-en').value;
+            masterText.spotCn = document.getElementById('input-spot-cn').value;
+
+            document.querySelectorAll('.h-cover-custom-text').forEach(el => updateHCoverContent(el));
+            document.querySelectorAll('.v-cover-custom-text').forEach(el => updateVCoverContent(el));
+            syncDecorators();
+        }
+
+        function filterCityDropdown(query) {
+            const dropdown = document.getElementById('city-dropdown');
+            const input = document.getElementById('input-city');
+            if (!dropdown || !input) return;
+
+            masterText.city = query;
+            document.querySelectorAll('.h-cover-custom-text').forEach(el => updateHCoverContent(el));
+            document.querySelectorAll('.v-cover-custom-text').forEach(el => updateVCoverContent(el));
+            syncDecorators();
+
+            const normalizedQuery = query.trim().toLocaleLowerCase();
+            dropdown.replaceChildren();
+            if (!normalizedQuery) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            const matches = Object.entries(cityMap).filter(([chinese, english]) =>
+                chinese.toLocaleLowerCase().includes(normalizedQuery) || english.toLocaleLowerCase().includes(normalizedQuery)
+            );
+            if (!matches.length) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            matches.forEach(([chinese, english]) => {
+                const option = document.createElement('button');
+                option.type = 'button';
+                option.className = 'w-full px-3 py-1.5 text-xs text-gray-200 hover:bg-purple-600 cursor-pointer flex justify-between text-left';
+                option.setAttribute('role', 'option');
+                const chineseName = document.createElement('span');
+                chineseName.textContent = chinese;
+                const englishName = document.createElement('span');
+                englishName.className = 'text-gray-400';
+                englishName.textContent = english;
+                option.append(chineseName, englishName);
+                option.addEventListener('click', () => selectCity(english));
+                dropdown.appendChild(option);
+            });
+            dropdown.classList.remove('hidden');
+        }
+
+        function selectCity(englishName) {
+            document.getElementById('input-city').value = englishName;
+            document.getElementById('city-dropdown').classList.add('hidden');
+            updateMasterTextFromInput();
+        }
+
+        document.addEventListener('click', (event) => {
+            const dropdown = document.getElementById('city-dropdown');
+            const input = document.getElementById('input-city');
+            if (dropdown && input && !input.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.add('hidden');
+            }
+        });
+
+        function setCategory(category) {
+            document.getElementById('input-category').value = category;
+            updateMasterTextFromInput();
+        }
+
+        function syncMasterTextInputs() {
+            const savedText = masterText || {};
+            const savedBarColor = savedText.barColor ?? '#ffffff';
+            const hasHex8BarColor = /^#[0-9a-f]{8}$/i.test(savedBarColor);
+            const normalizedBarColor = /^#[0-9a-f]{6}$/i.test(savedBarColor)
+                ? savedBarColor
+                : hasHex8BarColor
+                    ? savedBarColor.slice(0, 7)
+                    : '#ffffff';
+            const normalizedBarOpacity = savedText.barOpacity ?? (hasHex8BarColor
+                ? parseInt(savedBarColor.slice(7, 9), 16) / 255
+                : 0.4);
+            masterText = {
+                ...savedText,
+                category: savedText.category ?? 'TRAVEL',
+                city: savedText.city ?? savedText.sub1?.split('/')[0].trim() ?? 'Taichung',
+                spotEn: savedText.spotEn ?? '',
+                spotCn: savedText.spotCn ?? savedText.title ?? '葉綠宿',
+                strollColor: savedText.strollColor ?? '#f4f4f4',
+                timesColor: savedText.timesColor ?? '#f4f4f4',
+                barColor: normalizedBarColor,
+                barOpacity: normalizedBarOpacity
+            };
+
+            const inputValues = {
+                category: masterText.category,
+                city: masterText.city,
+                'spot-en': masterText.spotEn,
+                'spot-cn': masterText.spotCn
+            };
+            Object.entries(inputValues).forEach(([key, value]) => {
+                const inputEl = document.getElementById(`input-${key}`);
+                if (inputEl) inputEl.value = value;
+            });
         }
 
         function createTextBlock(pageData) {
@@ -982,10 +1250,10 @@
                     <button class="tool-btn hover:text-white" onclick="themeText(this, 'black')"><i class="fas fa-circle text-black border border-white rounded-full text-xs"></i></button>
                     <button class="tool-btn hover:text-white" onclick="themeText(this, 'white')"><i class="fas fa-circle text-white border border-gray-500 rounded-full text-xs"></i></button>
                 </div>
-                <div class="text-signature" contenteditable="true" spellcheck="false" onblur="updateMasterText('signature', this.innerText)">${masterText.signature}</div>
-                <div class="text-title" contenteditable="true" spellcheck="false" onblur="updateMasterText('title', this.innerText)">${masterText.title}</div>
-                <div class="text-sub1" contenteditable="true" spellcheck="false" onblur="updateMasterText('sub1', this.innerText)">${masterText.sub1}</div>
-                <div class="text-sub2" contenteditable="true" spellcheck="false" onblur="updateMasterText('sub2', this.innerText)">${masterText.sub2}</div>
+                <div class="text-signature" contenteditable="true" spellcheck="false" onblur="updateMasterText('signature', this.innerText)">${masterText.signature || 'Shengle Wang'}</div>
+                <div class="text-title" contenteditable="true" spellcheck="false" onblur="updateMasterText('title', this.innerText)">${masterText.title || masterText.spotCn}</div>
+                <div class="text-sub1" contenteditable="true" spellcheck="false" onblur="updateMasterText('sub1', this.innerText)">${masterText.sub1 || `${masterText.category} / ${masterText.city}`}</div>
+                <div class="text-sub2" contenteditable="true" spellcheck="false" onblur="updateMasterText('sub2', this.innerText)">${masterText.sub2 || masterText.spotEn || 'STROLLTIMES.COM'}</div>
             `;
             
             bindTextBlockEvents(block, pageData);
@@ -1059,20 +1327,58 @@
             document.querySelectorAll(`.text-${key}`).forEach(el => {
                 if (el !== document.activeElement) el.innerText = value;
             });
-            if(key === 'title') document.querySelectorAll('.hc-title').forEach(el => el.innerText = value);
-            if(key === 'sub1') {
-                document.querySelectorAll('.hc-sub1').forEach(el => el.innerText = value);
-                syncDecorators();
-            }
-            if(key === 'sub2') {
-                document.querySelectorAll('.hc-sub2').forEach(el => el.innerText = value);
-                syncDecorators();
-            }
+            if (key === 'sub1' || key === 'sub2') syncDecorators();
+        }
+
+        function updateMasterTextFromInput() {
+            masterText.category = document.getElementById('input-category').value;
+            masterText.city = document.getElementById('input-city').value;
+            masterText.spotEn = document.getElementById('input-spot-en').value;
+            masterText.spotCn = document.getElementById('input-spot-cn').value;
+            document.querySelectorAll('.h-cover-custom-text').forEach(el => updateHCoverContent(el));
+            document.querySelectorAll('.v-cover-custom-text').forEach(el => updateVCoverContent(el));
+            syncDecorators();
+        }
+
+        function syncMasterTextInputs() {
+            const savedText = masterText || {};
+            const savedBarColor = savedText.barColor ?? '#ffffff';
+            const hasHex8BarColor = /^#[0-9a-f]{8}$/i.test(savedBarColor);
+            const normalizedBarColor = /^#[0-9a-f]{6}$/i.test(savedBarColor)
+                ? savedBarColor
+                : hasHex8BarColor
+                    ? savedBarColor.slice(0, 7)
+                    : '#ffffff';
+            const normalizedBarOpacity = savedText.barOpacity ?? (hasHex8BarColor
+                ? parseInt(savedBarColor.slice(7, 9), 16) / 255
+                : 0.4);
+            masterText = {
+                ...savedText,
+                category: savedText.category ?? 'TRAVEL',
+                city: savedText.city ?? savedText.sub1?.split('/')[0].trim() ?? 'Taichung',
+                spotEn: savedText.spotEn ?? '',
+                spotCn: savedText.spotCn ?? savedText.title ?? '葉綠宿',
+                strollColor: savedText.strollColor ?? '#f4f4f4',
+                timesColor: savedText.timesColor ?? '#f4f4f4',
+                barColor: normalizedBarColor,
+                barOpacity: normalizedBarOpacity
+            };
+
+            const inputValues = {
+                category: masterText.category,
+                city: masterText.city,
+                'spot-en': masterText.spotEn,
+                'spot-cn': masterText.spotCn
+            };
+            Object.entries(inputValues).forEach(([key, value]) => {
+                const inputEl = document.getElementById(`input-${key}`);
+                if (inputEl) inputEl.value = value;
+            });
         }
         
         function syncDecorators() {
             document.querySelectorAll('.decorator-sub').forEach(el => {
-                el.innerHTML = `<span>${masterText.sub1}<br>${masterText.sub2}</span>`;
+                el.innerHTML = `<span>${masterText.category}<br>${masterText.city}</span>`;
             });
         }
 
@@ -1156,11 +1462,23 @@
                 img.onload = () => {
                     const cRect = container.getBoundingClientRect();
                     const minScale = Math.max(cRect.width / img.naturalWidth, cRect.height / img.naturalHeight);
+                    
                     imgInfo.minScale = minScale;
                     imgInfo.scale = minScale;
                     img.dataset.minScale = minScale;
                     img.dataset.scale = minScale;
-                    img.dataset.x = 0; img.dataset.y = 0;
+                    
+                    // 🌟 關鍵修改：計算置中的初始 X 與 Y 偏移量
+                    const scaledW = img.naturalWidth * minScale;
+                    const scaledH = img.naturalHeight * minScale;
+                    const initialX = (cRect.width - scaledW) / 2;
+                    const initialY = (cRect.height - scaledH) / 2;
+
+                    imgInfo.x = initialX;
+                    imgInfo.y = initialY;
+                    img.dataset.x = initialX;
+                    img.dataset.y = initialY;
+
                     applyImgTransform(img);
                 };
                 container.appendChild(img);
@@ -1508,6 +1826,7 @@
         window.loadProjectState = function(state) {
             pagesData = state.pagesData;
             masterText = state.masterText;
+            syncMasterTextInputs();
             currentGlobalBgColor = state.globalBgColor;
             document.getElementById('global-bg-color').value = currentGlobalBgColor;
             renderWorkspace();
@@ -1516,7 +1835,7 @@
         // 呼叫本地伺服器進行原生截圖的全新匯出函式
         async function exportProject() {
             const btn = document.getElementById('btn-export');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>正在進行原生渲染...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;
 
             // 匯出前先退出所有編輯狀態
@@ -1539,15 +1858,21 @@
 
                 if (!response.ok) throw new Error('伺服器截圖失敗');
 
-                // 接收後台打好的 ZIP 檔並觸發下載
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const fileName = `排版_${year}${month}${day}_${hours}${minutes}.zip`;
                 const blob = await response.blob();
-                saveAs(blob, "Magazine_Project.zip");
+                saveAs(blob, fileName);
                 alert('匯出成功！已自動下載高畫質 ZIP 壓縮檔。');
             } catch (err) {
                 console.error("Export Error: ", err);
                 alert("連線本地伺服器失敗！請確認您的 start.bat 與 server.js 有正常在背景執行。");
             } finally {
-                btn.innerHTML = '<i class="fas fa-file-export mr-2"></i>匯出專案 (ZIP)';
+                btn.innerHTML = '<i class="fas fa-file-export"></i>';
                 btn.disabled = false;
                 renderWorkspace();
             }
@@ -1561,11 +1886,8 @@
         // 控制匯入面板的展開與收合
         function toggleImportPanel() {
             const panel = document.getElementById('import-panel');
-            const chevron = document.getElementById('import-chevron');
             panel.classList.toggle('hidden');
             panel.classList.toggle('flex');
-            chevron.classList.toggle('fa-chevron-down');
-            chevron.classList.toggle('fa-chevron-up');
         }
 
         // 當使用者瀏覽並選取 TXT 檔案時，僅更新介面文字，不立刻執行
@@ -1575,6 +1897,9 @@
                 selectedTxtFile = file;
                 document.getElementById('txt-filename').innerText = file.name;
                 document.getElementById('txt-filename').title = file.name;
+                const panel = document.getElementById('import-panel');
+                panel.classList.remove('hidden');
+                panel.classList.add('flex');
             }
         }
 
@@ -1609,6 +1934,7 @@
                     pendingImportData = JSON.parse(evt.target.result);
                     currentGlobalBgColor = pendingImportData.globalBgColor || '#D3C3A3';
                     if (pendingImportData.masterText) masterText = pendingImportData.masterText;
+                    syncMasterTextInputs();
                     document.getElementById('global-bg-color').value = currentGlobalBgColor;
                     
                     pagesData = pendingImportData.pages;
@@ -1667,7 +1993,9 @@
             document.getElementById('import-images').value = '';
             document.getElementById('txt-filename').innerText = '未選擇';
             document.getElementById('img-foldername').innerText = '未選擇';
-            toggleImportPanel(); // 自動收合面板
+            const panel = document.getElementById('import-panel');
+            panel.classList.add('hidden');
+            panel.classList.remove('flex');
         }
 
         window.onload = init;

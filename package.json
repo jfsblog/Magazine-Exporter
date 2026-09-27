@@ -4,8 +4,8 @@
   "description": "Local Magazine Layout & Export Tool",
   "main": "server.js",
   "dependencies": {
-    "express": "^4.22.2",
-    "jszip": "^3.10.1",
+    "express": "^4.22.3",
+    "jszip": "^3.10.2",
     "puppeteer": "^22.15.0"
   }
 }
